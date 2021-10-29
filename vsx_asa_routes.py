@@ -120,9 +120,12 @@ def write_vsx_config(
                 f"mtu {args.if_mtu}",
                 file=out_file)
     for sroute in asaconfig.static_routes:
+        dest = ("default "
+                if sroute.dest_ip == "0.0.0.0" and sroute.mask == "0.0.0.0"
+                else f"{sroute.dest_ip} netmask {sroute.mask} ")
         print(
                 f"add route {vd_spec}"
-                f"destination {sroute.dest_ip} netmask {sroute.mask} "
+                f"destination {dest}"
                 f"next_hop {sroute.gateway_ip}",
                 file=out_file)
     print("transaction end", file=out_file)
