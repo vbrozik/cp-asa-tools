@@ -1,5 +1,10 @@
 #!/usr/bin/python3
-"""Process static routing information from Cisco ASA configuration."""
+"""Convert routing information from Cisco ASA configuration to VSX.
+
+Processed and converted data:
+    * VLAN interfaces
+    * static routes
+"""
 
 from __future__ import annotations
 
@@ -34,15 +39,7 @@ class BaseModelExt(BaseModel):
         return cls.parse_obj(dict(zip(cls.__fields__, values)))
 
 
-class StaticRoute(BaseModelExt):
-    """Store ASA static route definition."""
-
-    if_name: str = Field(regex=f'^{RE_ASA_IDF}$')
-    dest_ip: str = Field(regex=f'^{RE_IPV4}$')
-    mask: str = Field(regex=f'^{RE_IPV4}$')
-    gateway_ip: str = Field(regex=f'^{RE_IPV4}$')
-    distance: Optional[int] = Field(ge=1, le=1)     # too strict
-
+# --- parsed configuration storage
 
 class Interface(BaseModelExt):
     """Store ASA interface definition."""
@@ -56,12 +53,24 @@ class Interface(BaseModelExt):
     vlan_id: Optional[int] = None
 
 
+class StaticRoute(BaseModelExt):
+    """Store ASA static route definition."""
+
+    if_name: str = Field(regex=f'^{RE_ASA_IDF}$')
+    dest_ip: str = Field(regex=f'^{RE_IPV4}$')
+    mask: str = Field(regex=f'^{RE_IPV4}$')
+    gateway_ip: str = Field(regex=f'^{RE_IPV4}$')
+    distance: Optional[int] = Field(ge=1, le=1)     # strict for certain config
+
+
 class AsaConfig(BaseModelExt):
     """Store ASA configuration."""
 
     static_routes: List[StaticRoute] = Field(default_factory=list)
     interfaces: List[Interface] = Field(default_factory=list)
 
+
+# --- functions
 
 def read_asa_config(lines: Iterable[str]) -> AsaConfig:
     """Read ASA configuration file."""
