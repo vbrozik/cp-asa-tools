@@ -13,8 +13,9 @@ import contextlib
 import sys
 import enum
 import re
+import os
 
-from typing import Any, Optional, Iterable, List, TextIO
+from typing import IO, Any, Optional, Iterable, List, TextIO
 from pydantic import BaseModel, Field
 
 
@@ -166,12 +167,12 @@ def read_asa_config(lines: Iterable[str]) -> AsaConfig:
     return asaconfig
 
 
-def write_vsx_config(
+def write_vsx_provisioning_config(
             asaconfig: AsaConfig, args: argparse.Namespace,
             out_file: TextIO = sys.stdout):
     """Generate configuration commands for vsx_provisioning_tool."""
     print("transaction begin", file=out_file)
-    print(f"add vd name {args.dst_vs} vsx {args.ds_vsx}", file=out_file)
+    print(f"add vd name {args.dst_vs} vsx {args.dst_vsx}", file=out_file)
     vd_spec = "" if True else f"vd {args.dst_vs} "
     for intf in asaconfig.interfaces:
         print(
@@ -216,32 +217,53 @@ def write_vsx_prefix_lists(
                 file=out_file)
 
 
+def replace_fname_suffix(fname: str, new_suffix: str) -> str:
+    """Replace file name suffix."""
+    if not fname or fname == '-':
+        return fname
+    return os.path.splitext(fname)[0] + new_suffix
+
+
+def open_to_stack(
+        stack: contextlib.ExitStack, fname: str, mode: str = 'r') -> IO:
+    """Open file if not '-' and add it to the ExitStack."""
+    if not fname or fname == '-':
+        return sys.stdout if 'w' in mode else sys.stdin
+    return stack.enter_context(open(fname, mode))
+
+
 def main():
     """Provide CLI interface."""
     # --- CLI interface
     parser = argparse.ArgumentParser()
     parser.add_argument(
-            'in_file', nargs='?', type=argparse.FileType('r'),
+            'in_file', nargs='?',
             help="input ASA configuration file")
     parser.add_argument(
-            'out_file', nargs='?', type=argparse.FileType('w'),
-            help="output vsx_provisioning_tool commands")
+            'out_dir', nargs='?',
+            help="output directory")
     args = parser.parse_args()
-    args.ds_vsx = 'lab_vsx'
+    args.dst_vsx = 'lab_vsx'
     args.dst_vs = 'intervrf_01'
     args.phys_if = 'eth3'
     args.if_mtu = 4096
+    args.out_vsx_prov_suffix = '_vsxprov.cfg'
+    args.out_vsx_clish_suffix = '_clish.cfg'
     # --- file input
     with contextlib.ExitStack() as file_stack:
         asaconfig = read_asa_config(
-                    file_stack.enter_context(args.in_file) if args.in_file
-                    else sys.stdin)
+                    open_to_stack(file_stack, args.in_file))
+        file_stack.close()
     # --- file output
-    with contextlib.ExitStack() as file_stack:
-        out_file = (
-                    file_stack.enter_context(args.out_file) if args.out_file
-                    else sys.stdout)
-        write_vsx_config(asaconfig, args, out_file)
+        write_vsx_provisioning_config(
+                asaconfig, args,
+                open_to_stack(file_stack, replace_fname_suffix(
+                                args.in_file, args.out_vsx_prov_suffix), 'w'))
+        file_stack.close()
+        write_vsx_prefix_lists(
+                asaconfig, args,
+                open_to_stack(file_stack, replace_fname_suffix(
+                                args.in_file, args.out_vsx_clish_suffix), 'w'))
 
 
 if __name__ == '__main__':
