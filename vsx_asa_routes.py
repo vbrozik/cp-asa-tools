@@ -63,15 +63,63 @@ class StaticRoute(BaseModelExt):
     distance: Optional[int] = Field(ge=1, le=1)     # strict for certain config
 
 
+class PrefixList(BaseModelExt):
+    """Store ASA prefix list item.
+
+    https://www.cisco.com/c/en/us/td/docs/security/asa/asa-cli-reference/I-R/asa-command-ref-I-R/pr-pz-commands.html#wp3011918550
+    """
+
+    name: str = Field(regex=fr'^{RE_ASA_IDF}$')
+    action: str = Field(regex=r'^permit|deny$')
+    network: str = Field(regex=fr'^{RE_IPV4}$')
+    masklen: int = Field(ge=0, le=32)
+    min_prefix_len: Optional[int] = Field(default=None, ge=1, le=32)
+    max_prefix_len: Optional[int] = Field(default=None, ge=1, le=32)
+    seq: Optional[int] = None
+
+
 class AsaConfig(BaseModelExt):
     """Store ASA configuration."""
 
     interfaces: List[Interface] = Field(default_factory=list)
     static_routes: List[StaticRoute] = Field(default_factory=list)
-    interfaces: List[Interface] = Field(default_factory=list)
+    prefix_lists: List[PrefixList] = Field(default_factory=list)
 
 
 # --- functions
+
+def parse_prefix_list(words: list[str]) -> Optional[PrefixList]:
+    """Parse single line of ASA prefix list to PrefixList object.
+
+    The `prefix-list` keyword is removed already. The `words` list
+    is destroyed by this function.
+    """
+    # print(words)
+    prefix_list_d = {'name': words.pop(0)}
+    if words[0] == 'seq':
+        prefix_list_d['seq'] = words[1]
+        del words[:2]
+    if (action := words.pop(0)) == 'description':
+        return None     # 'description' not implemented
+    prefix_list_d['action'] = action
+    if not (match := re.fullmatch(
+                        fr"(?P<network>{RE_IPV4})/(?P<masklen>[1-3]?[0-9])",
+                        words.pop(0))):
+        # print(words)
+        # print(prefix_list_d)
+        raise ValueError
+    prefix_list_d['network'] = match.group('network')
+    prefix_list_d['masklen'] = match.group('masklen')
+    while words:
+        op = words.pop(0)
+        if op == 'le' and 'max_prefix_len' not in prefix_list_d:
+            prefix_list_d['max_prefix_len'] = words.pop(0)
+        elif op == 'ge' and 'min_prefix_len' not in prefix_list_d:
+            prefix_list_d['min_prefix_len'] = words.pop(0)
+        else:
+            raise ValueError
+    return PrefixList.parse_obj(prefix_list_d)
+
 
 def read_asa_config(lines: Iterable[str]) -> AsaConfig:
     """Read ASA configuration file."""
@@ -90,6 +138,9 @@ def read_asa_config(lines: Iterable[str]) -> AsaConfig:
             if word0 == 'route':
                 asaconfig.static_routes.append(
                                         StaticRoute.parse_iterable(words))
+            elif word0 == 'prefix-list':
+                if (prefix := parse_prefix_list(words)) is not None:
+                    asaconfig.prefix_lists.append(prefix)
             elif word0 == 'interface':
                 ctx = ASALineCtx.interface
                 interface: dict[str, str] = {'sys_name': words[0]}
