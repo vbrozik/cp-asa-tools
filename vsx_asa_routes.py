@@ -44,10 +44,10 @@ class BaseModelExt(BaseModel):
 class Interface(BaseModelExt):
     """Store ASA interface definition."""
 
-    sys_name: str = Field(regex=f'^{RE_ASA_IDF}$')
-    name: str = Field(regex=f'^{RE_ASA_IDF}$')
-    ip_addr: str = Field(regex=f'^{RE_IPV4}$')
-    mask: str = Field(regex=f'^{RE_IPV4}$')
+    sys_name: str = Field(regex=fr'^{RE_ASA_IDF}$')
+    name: str = Field(regex=fr'^{RE_ASA_IDF}$')
+    ip_addr: str = Field(regex=fr'^{RE_IPV4}$')
+    mask: str = Field(regex=fr'^{RE_IPV4}$')
     standby_ip: Optional[str] = Field(default=None, regex=f'^{RE_IPV4}$')
     security_level: Optional[int] = Field(default=None, ge=0, le=100)
     vlan_id: Optional[int] = None
@@ -56,16 +56,17 @@ class Interface(BaseModelExt):
 class StaticRoute(BaseModelExt):
     """Store ASA static route definition."""
 
-    if_name: str = Field(regex=f'^{RE_ASA_IDF}$')
-    dest_ip: str = Field(regex=f'^{RE_IPV4}$')
-    mask: str = Field(regex=f'^{RE_IPV4}$')
-    gateway_ip: str = Field(regex=f'^{RE_IPV4}$')
+    if_name: str = Field(regex=fr'^{RE_ASA_IDF}$')
+    dest_ip: str = Field(regex=fr'^{RE_IPV4}$')
+    mask: str = Field(regex=fr'^{RE_IPV4}$')
+    gateway_ip: str = Field(regex=fr'^{RE_IPV4}$')
     distance: Optional[int] = Field(ge=1, le=1)     # strict for certain config
 
 
 class AsaConfig(BaseModelExt):
     """Store ASA configuration."""
 
+    interfaces: List[Interface] = Field(default_factory=list)
     static_routes: List[StaticRoute] = Field(default_factory=list)
     interfaces: List[Interface] = Field(default_factory=list)
 
