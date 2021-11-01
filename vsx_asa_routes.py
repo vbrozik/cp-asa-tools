@@ -192,6 +192,30 @@ def write_vsx_config(
     print("transaction end", file=out_file)
 
 
+def write_vsx_prefix_lists(
+            asaconfig: AsaConfig, args: argparse.Namespace,
+            out_file: TextIO = sys.stdout):
+    """Generate clish commands for routing prefix lists."""
+    if args.dst_vs is not None:
+        print(f"set virtual system {args.dst_vs}", file=out_file)
+    current_prefix_name: Optional[str] = None
+    for prefix in asaconfig.prefix_lists:
+        if prefix.name != current_prefix_name:
+            print(f"#{'-'*38}", file=out_file)
+            current_prefix_name = prefix.name
+            seq_number = 0
+        seq_number += 10
+        subnets = (
+            'all' if prefix.min_prefix_len or prefix.max_prefix_len
+            else 'exact')
+        print(
+                f"set prefix-list {prefix.name} "
+                f"sequence-number {seq_number} "
+                f"prefix {prefix.network}/{prefix.masklen} "
+                f"{subnets}",
+                file=out_file)
+
+
 def main():
     """Provide CLI interface."""
     # --- CLI interface
