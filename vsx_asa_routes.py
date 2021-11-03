@@ -4,6 +4,7 @@
 Processed and converted data:
     * VLAN interfaces
     * static routes
+    * prefix lists
 """
 
 from __future__ import annotations
@@ -235,7 +236,9 @@ def open_to_stack(
 def main():
     """Provide CLI interface."""
     # --- CLI interface
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+            description="Convert routing information from "
+            "Cisco ASA configuration to VSX.")
     parser.add_argument(
             'in_file', nargs='?',
             help="input ASA configuration file")
