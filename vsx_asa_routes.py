@@ -218,6 +218,13 @@ def write_vsx_prefix_lists(
                 file=out_file)
 
 
+def get_vlans(asaconfig: AsaConfig) -> list[int]:
+    """Get list of VLANs in ASA config."""
+    return [
+            intf.vlan_id
+            for intf in asaconfig.interfaces if intf.vlan_id is not None]
+
+
 def replace_fname_suffix(fname: str, new_suffix: str) -> str:
     """Replace file name suffix."""
     if not fname or fname == '-':
@@ -245,6 +252,8 @@ def main():
     parser.add_argument(
             'out_dir', nargs='?',
             help="output directory")
+    parser.add_argument(
+            '--vlans', action='store_true', help='list VLANs to stdout')
     args = parser.parse_args()
     args.dst_vsx = 'lab_vsx'
     args.dst_vs = 'intervrf_01'
@@ -267,6 +276,8 @@ def main():
                 asaconfig, args,
                 open_to_stack(file_stack, replace_fname_suffix(
                                 args.in_file, args.out_vsx_clish_suffix), 'w'))
+    if args.vlans:
+        print('\n'.join(str(vlan) for vlan in get_vlans(asaconfig)))
 
 
 if __name__ == '__main__':
