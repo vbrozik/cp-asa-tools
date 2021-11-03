@@ -256,13 +256,13 @@ def main():
     with contextlib.ExitStack() as file_stack:
         asaconfig = read_asa_config(
                     open_to_stack(file_stack, args.in_file))
-        file_stack.close()
     # --- file output
+    with contextlib.ExitStack() as file_stack:
         write_vsx_provisioning_config(
                 asaconfig, args,
                 open_to_stack(file_stack, replace_fname_suffix(
                                 args.in_file, args.out_vsx_prov_suffix), 'w'))
-        file_stack.close()
+    with contextlib.ExitStack() as file_stack:
         write_vsx_prefix_lists(
                 asaconfig, args,
                 open_to_stack(file_stack, replace_fname_suffix(
