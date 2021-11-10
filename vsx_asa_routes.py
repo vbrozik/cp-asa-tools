@@ -255,9 +255,13 @@ def main():
     parser.add_argument(
             '--vlans', action='store_true', help='list VLANs to stdout')
     args = parser.parse_args()
+    # destination VSX to create the VS on
     args.dst_vsx = 'lab_vsx'
+    # VS name to create
     args.dst_vs = 'intervrf_01'
+    # physical interface to create VLAN interfaces on
     args.phys_if = 'eth3'
+    # MTU to set on every interface
     args.if_mtu = 4096
     args.out_vsx_prov_suffix = '_vsxprov.cfg'
     args.out_vsx_clish_suffix = '_clish.cfg'
